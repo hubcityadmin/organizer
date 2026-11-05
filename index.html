@@ -1,0 +1,966 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tax Organizer | Hub City Tax Pros</title>
+<!--
+  Hub City Tax Pros - Online 1040 Tax Organizer
+  Follows the Required Rules in README.md:
+   1. Never asks for a Social Security Number (or ITIN / partial SSN), and blocks one if typed.
+   2. Only asks for information used to prepare a tax return.
+   3. The tax year is chosen first; nothing else is shown until it is.
+   4. The finished organizer can be sent ONLY to cpa@hubcitytaxpros.com and the
+      one address the client types in the email field.
+   5. No other copies: no analytics, no outside scripts, no browser storage, no server.
+      Everything stays on the client's screen until they choose to email or print it.
+-->
+<style>
+:root{
+  --bg:#f5f6f8; --card:#ffffff; --ink:#1d2430; --muted:#5b6575; --line:#d9dee6;
+  --brand:#1f4e79; --brand-ink:#ffffff; --brand-soft:#e7eef6; --accent:#2f7d4f;
+  --err:#b42318; --err-soft:#fdecea; --focus:#3b82f6;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.app{max-width:1100px;margin:0 auto;padding:16px}
+header.top{background:var(--brand);color:var(--brand-ink);border-radius:12px;padding:20px 24px;margin-bottom:16px}
+header.top .brand{font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
+header.top h1{margin:4px 0 0;font-size:26px}
+header.top .sub{margin:6px 0 0;opacity:.9}
+.layout{display:grid;grid-template-columns:240px 1fr;gap:16px;align-items:start}
+nav.steps{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;position:sticky;top:16px}
+nav.steps button{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;padding:8px 10px;border-radius:8px;font:inherit;font-size:14px;color:var(--muted);cursor:pointer}
+nav.steps button .n{flex:none;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:12px}
+nav.steps button.done{color:var(--ink)}
+nav.steps button.done .n{background:var(--accent);border-color:var(--accent);color:#fff}
+nav.steps button.cur{background:var(--brand-soft);color:var(--brand);font-weight:600}
+nav.steps button.cur .n{background:var(--brand);border-color:var(--brand);color:#fff}
+nav.steps button:disabled{cursor:default;opacity:.55}
+main{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;min-width:0}
+.progress{height:6px;background:var(--brand-soft);border-radius:3px;overflow:hidden;margin-bottom:20px}
+.progress div{height:100%;background:var(--brand);width:0;transition:width .25s}
+h2{margin:0 0 4px;font-size:22px}
+.stepno{font-size:13px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.intro{color:var(--muted);margin:0 0 20px}
+h3{grid-column:1/-1;margin:16px 0 0;font-size:17px;border-bottom:1px solid var(--line);padding-bottom:4px}
+h4{grid-column:1/-1;margin:8px 0 -4px;font-size:15px;color:var(--brand)}
+form{display:grid;grid-template-columns:repeat(12,1fr);gap:14px 16px}
+.field{grid-column:span 6;min-width:0}
+.field.sm{grid-column:span 3}.field.xs{grid-column:span 2}.field.lg{grid-column:1/-1}
+.field[hidden]{display:none}
+.contents{display:contents}.contents[hidden]{display:none}
+.field>label,.field>.lbl{display:block;font-weight:600;font-size:14px;margin-bottom:4px}
+.req{color:var(--err)}
+.help{font-size:13px;color:var(--muted);margin:-2px 0 6px}
+input[type=text],input[type=email],input[type=tel],input[type=date],input[type=number],select,textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;color:var(--ink)}
+textarea{min-height:90px;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.money{position:relative}.money span{position:absolute;left:10px;top:9px;color:var(--muted)}.money input{padding-left:22px}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opts.inline{flex-direction:row;flex-wrap:wrap;gap:8px 18px}
+.opt{display:flex;gap:8px;align-items:flex-start;font-weight:400;cursor:pointer}
+.opt input{margin-top:4px;width:17px;height:17px;flex:none}
+.cc{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px}
+.cc .opt{justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.cc .opt>span{display:flex;gap:8px;align-items:flex-start}
+.cc input[type=number]{width:64px;padding:4px 6px}
+.cc input[type=number]:disabled{visibility:hidden}
+.note{grid-column:1/-1;background:var(--brand-soft);border-radius:8px;padding:10px 14px;margin:0;font-size:14px}
+.note.warn{background:#fff7e6}
+fieldset.row{grid-column:1/-1;border:1px solid var(--line);border-radius:10px;padding:14px;margin:0;display:grid;grid-template-columns:repeat(12,1fr);gap:12px 16px}
+fieldset.row legend{font-weight:700;padding:0 6px;display:flex;gap:10px;align-items:center}
+.btn{font:inherit;border-radius:8px;padding:10px 18px;border:1px solid var(--brand);background:var(--brand);color:#fff;cursor:pointer;font-weight:600}
+.btn.ghost{background:#fff;color:var(--brand)}
+.btn.small{padding:4px 10px;font-size:13px;font-weight:500}
+.btn.link{background:none;border:0;color:var(--err);padding:0 4px;font-size:13px;text-decoration:underline}
+.btn:disabled{opacity:.5;cursor:default}
+.addrow{grid-column:1/-1}
+.actions{display:flex;justify-content:space-between;gap:12px;margin-top:24px;border-top:1px solid var(--line);padding-top:16px}
+.field.err input,.field.err select,.field.err textarea,.field.err .opts,.field.err .cc{border-color:var(--err);outline:1px solid var(--err);border-radius:8px}
+.msg{color:var(--err);font-size:13px;margin-top:4px}
+.msg:empty{display:none}
+.banner{grid-column:1/-1;background:var(--err-soft);color:var(--err);border-radius:8px;padding:10px 14px}
+footer{color:var(--muted);font-size:13px;margin-top:16px;text-align:center}
+/* Review */
+.review{grid-column:1/-1}
+.tools{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 20px}
+.panel{border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:18px}
+.panel h3{margin-top:0}
+.sum-sec{margin-top:14px}
+.sum-sec h4{margin:0 0 6px}
+dl{display:grid;grid-template-columns:minmax(160px,40%) 1fr;gap:4px 14px;margin:0}
+dt{color:var(--muted);font-size:14px}dd{margin:0;font-size:14px;white-space:pre-wrap;word-break:break-word}
+.sub-h{grid-column:1/-1;font-weight:700;font-size:14px;margin-top:8px}
+ol.check{margin:0;padding-left:0;list-style:none}
+ol.check li{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+ol.check li:last-child{border-bottom:0}
+ol.check .box{flex:none;width:18px;height:18px;border:1.5px solid var(--ink);border-radius:3px;margin-top:3px}
+ol.check small{display:block;color:var(--muted)}
+.print-only{display:none}
+@media (max-width:820px){
+  .layout{grid-template-columns:1fr}
+  nav.steps{display:none}
+  main{padding:18px 16px}
+  .field,.field.sm,.field.xs{grid-column:1/-1}
+  .field.sm.pair,.field.xs.pair{grid-column:span 6}
+  .cc{grid-template-columns:1fr}
+  dl{grid-template-columns:1fr}dt{margin-top:6px}
+  header.top h1{font-size:22px}
+}
+@media print{
+  body{background:#fff}
+  header.top{background:none;color:#000;padding:0;border-bottom:2px solid #000;border-radius:0}
+  nav.steps,.progress,.actions,.tools,footer,.no-print{display:none!important}
+  .layout{display:block}
+  main{border:0;padding:0}
+  .panel{border:0;padding:0;page-break-inside:auto}
+  .panel.checklist{page-break-before:always}
+  body.only-checklist .panel.organizer{display:none}
+  body.only-checklist .panel.checklist{page-break-before:auto}
+  .print-only{display:block}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">Hub City Tax Pros</div>
+    <h1 id="title">Online Tax Organizer</h1>
+    <p class="sub" id="subtitle">Answer a few questions and we'll build your organizer and a list of the documents to bring.</p>
+  </header>
+  <div class="layout">
+    <nav class="steps" id="steps" aria-label="Organizer sections"></nav>
+    <main>
+      <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+      <form id="form" novalidate></form>
+      <div class="actions">
+        <button type="button" class="btn ghost" id="back">Back</button>
+        <button type="button" class="btn" id="next">Next</button>
+      </div>
+    </main>
+  </div>
+  <footer>
+    Your privacy: we never ask for Social Security numbers. Nothing you type is saved or sent anywhere while you work.
+    When you finish, you can email your organizer only to Hub City Tax Pros (cpa@hubcitytaxpros.com) and to your own email address.
+  </footer>
+</div>
+
+<script>
+"use strict";
+/* ------------------------------------------------------------------ *
+ * Settings
+ * ------------------------------------------------------------------ */
+const OFFICE_EMAIL = "cpa@hubcitytaxpros.com";          // README rule 4: the only office recipient
+const YEARS = [2026, 2025, 2024];                         // tax years clients may choose
+const GIFT_LIMIT = {2024: 18000, 2025: 19000, 2026: 19000}; // annual gift exclusion by year
+const HEALTH_MANDATE_STATES = ["CA","DC","MA","NJ","RI"];
+const STATES = [["AL","Alabama"],["AK","Alaska"],["AZ","Arizona"],["AR","Arkansas"],["CA","California"],["CO","Colorado"],["CT","Connecticut"],["DE","Delaware"],["DC","District of Columbia"],["FL","Florida"],["GA","Georgia"],["HI","Hawaii"],["ID","Idaho"],["IL","Illinois"],["IN","Indiana"],["IA","Iowa"],["KS","Kansas"],["KY","Kentucky"],["LA","Louisiana"],["ME","Maine"],["MD","Maryland"],["MA","Massachusetts"],["MI","Michigan"],["MN","Minnesota"],["MS","Mississippi"],["MO","Missouri"],["MT","Montana"],["NE","Nebraska"],["NV","Nevada"],["NH","New Hampshire"],["NJ","New Jersey"],["NM","New Mexico"],["NY","New York"],["NC","North Carolina"],["ND","North Dakota"],["OH","Ohio"],["OK","Oklahoma"],["OR","Oregon"],["PA","Pennsylvania"],["RI","Rhode Island"],["SC","South Carolina"],["SD","South Dakota"],["TN","Tennessee"],["TX","Texas"],["UT","Utah"],["VT","Vermont"],["VA","Virginia"],["WA","Washington"],["WV","West Virginia"],["WI","Wisconsin"],["WY","Wyoming"]];
+
+/* ------------------------------------------------------------------ *
+ * State.  S = everything typed.  E = only the answers that are
+ * currently visible (hidden follow-ups are dropped), rebuilt on change.
+ * ------------------------------------------------------------------ */
+const S = {};
+let E = {};
+const yr = () => +(S.taxYear || 0);
+function t(s){
+  if (typeof s === "function") s = s();
+  const y = yr();
+  return String(s)
+    .replace(/\{Y\}/g, y || "the tax year")
+    .replace(/\{Y1\}/g, y ? y + 1 : "next year")
+    .replace(/\{Y0\}/g, y ? y - 1 : "last year")
+    .replace(/\{GIFT\}/g, "$" + (GIFT_LIMIT[y] || 19000).toLocaleString())
+    .replace(/\{P1099\}/g, y >= 2026 ? "$2,000" : "$600");
+}
+const has = (id, v) => { const x = E[id]; return Array.isArray(x) ? x.includes(v) : !!(x && typeof x === "object" && v in x); };
+const isMarried = () => E.marital === "married";
+const hasSpouse = () => isMarried() || (E.marital === "widowed" && E.spouseDied === "yes");
+const Y = () => yr();
+
+/* ------------------------------------------------------------------ *
+ * Field builders
+ * ------------------------------------------------------------------ */
+const f = (type, id, label, o = {}) => ({type, id, label, ...o});
+const text  = (id, l, o) => f("text", id, l, o);
+const money = (id, l, o) => f("money", id, l, {w:"sm", ...o});
+const date  = (id, l, o) => f("date", id, l, {w:"sm", ...o});
+const num   = (id, l, o) => f("num", id, l, {w:"sm", ...o});
+const yesno = (id, l, o) => f("yesno", id, l, {w:"lg", ...o});
+const radio = (id, l, opts, o) => f("radio", id, l, {opts, w:"lg", ...o});
+const checks= (id, l, opts, o) => f("checks", id, l, {opts, w:"lg", ...o});
+const select= (id, l, opts, o) => f("select", id, l, {opts, ...o});
+const head  = (label, o) => f("heading", "", label, o);
+const sub   = (label, o) => f("subhead", "", label, o);
+const note  = (label, o) => f("note", "", label, o);
+const area  = (id, l, o) => f("textarea", id, l, {w:"lg", ...o});
+const repeat= (id, l, item, fields, o) => f("repeat", id, l, {item, fields, ...o});
+const stateOpts = STATES;
+
+const PERSON_FLAGS = [
+  ["blind","Legally blind"],
+  ["disabled","Permanently and totally disabled"],
+  ["dependent","Can be claimed as a dependent on someone else's tax return"],
+  ["student","Full-time student"],
+  ["pecf","Designate $3 to the Presidential Election Campaign Fund"]
+];
+const REL = [["son","Son"],["daughter","Daughter"],["stepchild","Stepchild"],["foster","Foster child"],["grandchild","Grandchild"],["sibling","Brother or sister"],["nieceNephew","Niece or nephew"],["parent","Parent"],["otherRel","Other relative"],["other","Other (not related)"]];
+
+const INCOME = [
+  ["w2","Wages from a job (Form W-2)"],
+  ["r","Retirement, pension, IRA, or annuity distributions (Form 1099-R)"],
+  ["ssa","Social Security benefits (Form SSA-1099)"],
+  ["se","Self-employment or business income (Form 1099-NEC, 1099-K, or no form)"],
+  ["refund","State or local tax refund (Form 1099-G)"],
+  ["unemp","Unemployment compensation (Form 1099-G)"],
+  ["int","Interest (Form 1099-INT)"],
+  ["div","Dividends (Form 1099-DIV)"],
+  ["b","Sold stocks, bonds, or other investments (Form 1099-B)"],
+  ["c","Canceled or forgiven debt (Form 1099-C)"],
+  ["rent","Rental property income"],
+  ["roy","Royalties (Form 1099-MISC)"],
+  ["q","Education savings or 529 plan distributions (Form 1099-Q)"],
+  ["sa","HSA or MSA distributions (Form 1099-SA)"],
+  ["k1p","Partnership (Schedule K-1)"],
+  ["k1s","S corporation (Schedule K-1)"],
+  ["k1e","Estate or trust (Schedule K-1)"],
+  ["gamb","Gambling winnings (Form W-2G)"],
+  ["farm","Farming income"],
+  ["other","Other income not listed above"]
+];
+
+const MONEY_ROW = [text("desc","Description",{w:"lg",req:true}), money("amt","Amount")];
+
+const BIZ_EXPENSES = [
+  ["advertising","Advertising"],["commissions","Commissions and fees"],["contract","Contract labor"],
+  ["benefits","Employee benefit programs"],["insurance","Insurance (other than health)"],
+  ["intMortgage","Interest (mortgage)"],["intOther","Interest (other)"],["legal","Legal and professional services"],
+  ["office","Office expenses"],["pension","Pension and profit-sharing plans"],
+  ["rentVehicle","Rent (vehicles, machinery, equipment)"],["rentOther","Rent (other business property)"],
+  ["repairs","Repairs and maintenance"],["supplies","Supplies"],["taxes","Taxes and licenses"],
+  ["travel","Travel"],["meals","Meals"],["utilities","Utilities"],["wages","Wages"]
+];
+const VEH_EXPENSES = [["interest","Interest"],["parking","Parking and tolls"],["propTax","Property tax"],["fuel","Fuel and oil"],["insurance","Insurance"],["lease","Lease payments"],["registration","Registration fees"],["repairs","Repairs and maintenance"],["other","Other vehicle expenses"]];
+const HOME_EXPENSES = [["mortgage","Mortgage interest"],["reTax","Real estate taxes"],["insurance","Insurance"],["rent","Rent"],["repairs","Repairs and maintenance"],["utilities","Utilities"]];
+const RENT_EXPENSES = [["advertising","Advertising"],["auto","Auto and travel"],["cleaning","Cleaning and maintenance"],["commissions","Commissions"],["insurance","Insurance"],["legal","Legal and professional fees"],["mgmt","Management fees"],["mortgage","Mortgage interest"],["intOther","Other interest"],["repairs","Repairs"],["supplies","Supplies"],["taxes","Property taxes"],["utilities","Utilities"],["other","Other expenses"]];
+const EST_ROWS = [["ovp","{Y0} overpayment applied to {Y}"],["q1","First quarterly payment"],["q2","Second quarterly payment"],["q3","Third quarterly payment"],["q4","Fourth quarterly payment"],["add","Additional payment(s)"]];
+
+/* ------------------------------------------------------------------ *
+ * The organizer.  Each section: id, title, intro, optional `if`,
+ * and fields.  A field's `if(E,row)` decides when it appears.
+ * ------------------------------------------------------------------ */
+const SECTIONS = [
+{ id:"year", title:"Tax Year", intro:"Let's start with the year. Every question after this is about the tax year you choose.",
+  fields:[
+    radio("taxYear","Which tax year is this organizer for?", YEARS.map(y => [String(y), `${y} (the return you file in ${y+1})`]), {req:true}),
+    note("Please don't enter Social Security numbers anywhere in this organizer. We'll never ask for them online.")
+  ]},
+
+{ id:"you", title:"About You", intro:"Tell us about yourself. Everyone completes this section.",
+  fields:[
+    text("tp_first","First name",{req:true,w:"md",ac:"given-name"}),
+    text("tp_mi","M.I.",{w:"xs"}),
+    text("tp_last","Last name",{req:true,w:"md",ac:"family-name"}),
+    text("tp_suffix","Suffix",{w:"xs",ph:"Jr., Sr."}),
+    date("tp_dob","Date of birth",{req:true,ac:"bday"}),
+    text("tp_occ","Occupation",{w:"md"}),
+    f("email","tp_email","Email address",{req:true,w:"md",ac:"email",help:"When you're done, a copy of your organizer can be sent only to this address and to our office."}),
+    f("tel","tp_phone","Phone number",{w:"sm",ac:"tel"}),
+    text("tp_street","Street address",{w:"lg",ac:"street-address"}),
+    text("tp_city","City",{w:"md",ac:"address-level2"}),
+    select("tp_state","State",stateOpts,{w:"sm"}),
+    text("tp_zip","ZIP code",{w:"sm",ac:"postal-code"}),
+    checks("tp_flags","Select any that applied to you in {Y}",PERSON_FLAGS)
+  ]},
+
+{ id:"household", title:"Household", intro:"Your answers here decide which sections come next.",
+  fields:[
+    radio("marital","What was your marital status on December 31, {Y}?",[["single","Single (never married)"],["married","Married"],["divorced","Divorced or legally separated"],["widowed","Widowed"]],{req:true}),
+    yesno("spouseDied","Did your spouse pass away during {Y}?",{req:true,if:E=>E.marital==="widowed"}),
+    num("widowYear","What year did your spouse pass away?",{if:E=>E.marital==="widowed" && E.spouseDied==="no"}),
+    radio("filePref","How would you like to file?",[["joint","Married filing jointly"],["separate","Married filing separately"],["unsure","Not sure, help us decide"]],{req:true,if:isMarried}),
+    yesno("livedApart","Did you and your spouse live apart for the last 6 months of {Y}?",{if:isMarried}),
+    yesno("hasDeps","In {Y}, did any children or other relatives live with you, or did you financially support anyone?",{req:true})
+  ]},
+
+{ id:"spouse", title:"Spouse", intro:"Tell us about your spouse.", if:hasSpouse,
+  fields:[
+    text("sp_first","First name",{req:true,w:"md"}),
+    text("sp_mi","M.I.",{w:"xs"}),
+    text("sp_last","Last name",{req:true,w:"md"}),
+    text("sp_suffix","Suffix",{w:"xs"}),
+    date("sp_dob","Date of birth",{req:true}),
+    date("sp_death","Date of death",{req:true,if:E=>E.marital==="widowed"}),
+    text("sp_occ","Occupation",{w:"md"}),
+    f("tel","sp_phone","Phone number",{w:"sm"}),
+    checks("sp_flags","Select any that applied to your spouse in {Y}",PERSON_FLAGS),
+    checks("sp_mfs","Filing separately: select any that apply",[["notFiling","My spouse is not filing a tax return"],["noIncome","My spouse had no income"]],{if:E=>isMarried() && E.filePref==="separate"})
+  ]},
+
+{ id:"deps", title:"Dependents", intro:"List each child or other person you supported in {Y}.", if:E=>E.hasDeps==="yes",
+  fields:[
+    repeat("deps","Dependents","Dependent",[
+      text("name","Name (first and last)",{req:true,w:"md"}),
+      select("rel","Relationship",REL,{req:true,w:"sm"}),
+      date("dob","Date of birth",{req:true}),
+      num("months","Months lived in your home in {Y}",{min:0,max:12,w:"sm"}),
+      checks("flags","Select any that apply",[["income","Had income of their own"],["disabled","Permanently and totally disabled"],["student","Full-time student"],["care","You paid child care or dependent care for them"]])
+    ],{min:1})
+  ]},
+
+{ id:"life", title:"Life Events", intro:"Select everything that happened in {Y}. Leave it blank if none apply.",
+  fields:[
+    checks("le","What happened in {Y}?",[
+      ["marital","Changed marital status"],
+      ["name","You, your spouse, or a dependent changed their name with Social Security"],
+      ["letter","Received a notice or letter from the IRS or a state tax agency"],
+      ["ippin","You, your spouse, or a dependent has an Identity Protection PIN (IP PIN) from the IRS"],
+      ["baby","Had a baby or adopted a child"],
+      ["military","Served in the Armed Forces"],
+      ["first","This is your first time filing a tax return"],
+      ["death","You, your spouse, or a dependent passed away"],
+      ["moved","Changed your address"]
+    ]),
+    date("le_maritalDate","Date your marital status changed",{if:E=>has("le","marital")}),
+    text("le_nameWho","Who changed their name?",{w:"md",if:E=>has("le","name")}),
+    radio("le_milType","Military duty type",[["active","Active duty"],["reserve","Reserve or National Guard"]],{if:E=>has("le","military")}),
+    yesno("le_combat","Did you serve in a combat zone in {Y}?",{if:E=>has("le","military")}),
+    text("le_deathWho","Who passed away?",{w:"md",if:E=>has("le","death")}),
+    date("le_deathDate","Date of death",{if:E=>has("le","death")}),
+    text("le_prevAddr","Previous address",{w:"lg",if:E=>has("le","moved")}),
+    date("le_moveDate","Date you moved",{if:E=>has("le","moved")}),
+    yesno("le_newState","Did you move to a different state?",{if:E=>has("le","moved")}),
+    select("le_prevState","Which state did you move from?",stateOpts,{w:"sm",if:E=>has("le","moved") && E.le_newState==="yes"})
+  ]},
+
+{ id:"financial", title:"Financial Events", intro:"Select everything that applied in {Y}. Leave it blank if none apply.",
+  fields:[
+    checks("fe","What happened in {Y}?",[
+      ["home","Bought, sold, or refinanced a home or rental property"],
+      ["disaster","Had property damaged or stolen in a federally declared disaster"],
+      ["rollover","Converted or rolled over a retirement account"],
+      ["digital","Received, sold, exchanged, gifted, or otherwise disposed of a digital asset (crypto, NFTs)"],
+      ["foreign","Had a financial interest in, or signature authority over, a foreign account or trust"],
+      ["gift",()=>t("Gave more than {GIFT} total to any one person")],
+      ["market","Bought health insurance through the Marketplace (Healthcare.gov or a state exchange)"]
+    ]),
+    checks("fe_home","Home or rental property: what happened?",[["bought","Bought"],["sold","Sold"],["refi","Refinanced"]],{if:E=>has("fe","home")}),
+    radio("fe_homeType","What type of property?",[["main","Main home"],["second","Second home"],["rental","Rental property"]],{if:E=>has("fe","home")}),
+    area("fe_disasterDesc","Briefly describe the damage or loss",{if:E=>has("fe","disaster")}),
+    yesno("fe_foreign10k","Was the combined value of all foreign accounts more than $10,000 at any time in {Y}?",{if:E=>has("fe","foreign")}),
+    yesno("fe_coverage","Did everyone in your household have health insurance for all of {Y}?",{if:E=>HEALTH_MANDATE_STATES.includes(E.tp_state),help:"Your state requires this information."})
+  ]},
+
+{ id:"income", title:"Income", intro:"Select each type of income you (or your spouse) received in {Y}, and how many forms you have for it.",
+  fields:[
+    f("checkcount","inc","Income received in {Y}",{opts:INCOME,w:"lg"}),
+    yesno("inc_tips","Did you receive tips you did not report to your employer?",{if:E=>has("inc","w2")}),
+    money("inc_tipsAmt","Unreported tips",{if:E=>has("inc","w2") && E.inc_tips==="yes"}),
+    repeat("inc_other","Other income","Other income",MONEY_ROW,{min:1,if:E=>has("inc","other")})
+  ]},
+
+{ id:"business", title:"Self-Employment", intro:"You told us you had self-employment income. Tell us about the business. If you have more than one business, complete this for your main one and list the others in the notes at the end.",
+  if:E=>has("inc","se"),
+  fields:[
+    head("General business information"),
+    text("bz_name","Business name",{req:true,w:"md"}),
+    text("bz_product","Principal product or service",{w:"md"}),
+    text("bz_ein","EIN (only if the business has one)",{w:"sm",ein:true}),
+    text("bz_street","Business street address",{w:"lg",help:"Leave blank if it's the same as your home address."}),
+    text("bz_city","City",{w:"md"}), select("bz_state","State",stateOpts,{w:"sm"}), text("bz_zip","ZIP code",{w:"sm"}),
+    checks("bz_events","Select all that applied to this business in {Y}",[
+      ["started","Started, purchased, or otherwise acquired"],
+      ["closed","Closed, sold, or otherwise disposed of"],
+      ["paidContract",()=>t("Paid {P1099} or more to any one non-employee (contractor)")],
+      ["seHealth","Paid self-employed health insurance premiums"],
+      ["tips","Received tips included on Form(s) 1099"],
+      ["retire","Made contributions to a self-employed retirement plan (SEP, SIMPLE, Solo 401(k))"]
+    ]),
+    date("bz_startDate","Date started or acquired",{if:E=>has("bz_events","started")}),
+    date("bz_closeDate","Date closed or disposed of",{if:E=>has("bz_events","closed")}),
+    yesno("bz_filed1099","Did you file Form 1099 for those contractors?",{if:E=>has("bz_events","paidContract")}),
+    money("bz_seHealthAmt","Self-employed health insurance premiums",{if:E=>has("bz_events","seHealth")}),
+    money("bz_tipsAmt","Tips included on Form(s) 1099",{if:E=>has("bz_events","tips")}),
+    text("bz_retType","Type of retirement plan",{w:"sm",if:E=>has("bz_events","retire")}),
+    money("bz_retAmt","Amount contributed",{if:E=>has("bz_events","retire")}),
+    radio("bz_method","Accounting method",[["cash","Cash"],["accrual","Accrual"],["other","Other"]],{inline:true}),
+    text("bz_methodOther","Other accounting method",{if:E=>E.bz_method==="other"}),
+    radio("bz_books","How would you like to give us your income and expenses?",[["enter","I'll enter them here"],["bring","I'll bring a profit & loss statement or bookkeeping report instead"]],{req:true}),
+
+    head("Income",{if:E=>E.bz_books==="enter"}),
+    money("bz_inc1099","Income reported on Form(s) 1099",{if:E=>E.bz_books==="enter"}),
+    money("bz_incNo1099","Income not reported on Form(s) 1099",{if:E=>E.bz_books==="enter"}),
+    money("bz_returns","Returns and allowances",{if:E=>E.bz_books==="enter"}),
+    money("bz_incOther","Other income",{if:E=>E.bz_books==="enter"}),
+
+    yesno("bz_inventory","Does this business sell products or keep inventory?",{if:E=>E.bz_books==="enter"}),
+    head("Cost of goods sold",{if:E=>E.bz_books==="enter" && E.bz_inventory==="yes"}),
+    ...[["begInv","Inventory at beginning of year"],["purchases","Purchases"],["personal","Cost of personal use items"],["labor","Cost of labor"],["materials","Materials and supplies"],["otherCosts","Other costs"],["endInv","Inventory at end of year"]]
+      .map(([k,l]) => money("bz_cogs_"+k,l,{if:E=>E.bz_books==="enter" && E.bz_inventory==="yes"})),
+    text("bz_invMethod","Inventory method",{w:"sm",if:E=>E.bz_books==="enter" && E.bz_inventory==="yes"}),
+
+    head("Expenses",{if:E=>E.bz_books==="enter"}),
+    ...BIZ_EXPENSES.map(([k,l]) => money("bz_exp_"+k,l,{if:E=>E.bz_books==="enter"})),
+    repeat("bz_otherExp","Other expenses","Other expense",MONEY_ROW,{if:E=>E.bz_books==="enter"}),
+
+    head("Assets"),
+    yesno("bz_assets","Did the business buy, sell, or dispose of any equipment, furniture, or other assets costing more than $2,500 in {Y}?"),
+    repeat("bz_assetList","Assets","Asset",[
+      text("desc","Description of property",{req:true,w:"lg"}),
+      date("acq","Date acquired"), money("cost","Cost"),
+      date("sold","Date sold or disposed"), money("price","Sale price"), money("saleExp","Expenses of sale")
+    ],{min:1,if:E=>E.bz_assets==="yes"}),
+
+    head("Vehicle"),
+    yesno("bz_vehicle","Did you use a vehicle for this business?"),
+    text("bz_veh_desc","Vehicle description (year, make, model)",{w:"md",if:E=>E.bz_vehicle==="yes"}),
+    date("bz_veh_date","Date placed in service",{if:E=>E.bz_vehicle==="yes"}),
+    num("bz_veh_bizMiles","Business miles",{if:E=>E.bz_vehicle==="yes"}),
+    num("bz_veh_commute","Commuting miles",{if:E=>E.bz_vehicle==="yes"}),
+    num("bz_veh_personal","Other personal miles",{if:E=>E.bz_vehicle==="yes"}),
+    checks("bz_veh_flags","Select all that apply",[["offDuty","Available for personal use during off-duty hours"],["another","Another vehicle is available for personal use"],["evidence","Evidence is available to support vehicle deductions"],["written","The evidence is written"]],{if:E=>E.bz_vehicle==="yes"}),
+    sub("Vehicle expenses (optional if you'll use the mileage rate)",{if:E=>E.bz_vehicle==="yes"}),
+    ...VEH_EXPENSES.map(([k,l]) => money("bz_veh_"+k,l,{if:E=>E.bz_vehicle==="yes"})),
+
+    head("Business use of home"),
+    yesno("bz_home","Did you use part of your home regularly and exclusively for this business?"),
+    num("bz_home_area","Business use area (sq. ft.)",{if:E=>E.bz_home==="yes"}),
+    num("bz_home_total","Total area of home (sq. ft.)",{if:E=>E.bz_home==="yes"}),
+    yesno("bz_daycare","Is this a daycare business?",{if:E=>E.bz_home==="yes"}),
+    num("bz_dc_hours","Hours used during the year",{if:E=>E.bz_home==="yes" && E.bz_daycare==="yes"}),
+    num("bz_dc_days","Days used during the year",{if:E=>E.bz_home==="yes" && E.bz_daycare==="yes"}),
+    sub("Home expenses",{if:E=>E.bz_home==="yes"}),
+    ...HOME_EXPENSES.flatMap(([k,l]) => [
+      money("bz_home_"+k+"_biz",l+": business area only",{w:"md",if:E=>E.bz_home==="yes"}),
+      money("bz_home_"+k+"_all",l+": entire home",{w:"md",if:E=>E.bz_home==="yes"})
+    ])
+  ]},
+
+{ id:"rental", title:"Rental Property", intro:"You told us you had rental income. Tell us about each property.", if:E=>has("inc","rent"),
+  fields:[
+    radio("rent_books","How would you like to give us rental income and expenses?",[["enter","I'll enter them here"],["bring","I'll bring an income and expense summary for each property"]],{req:true}),
+    repeat("rentals","Properties","Property",[
+      text("addr","Property address",{req:true,w:"lg"}),
+      select("type","Type of property",[["single","Single-family home"],["multi","Multi-family"],["vacation","Vacation or short-term rental"],["commercial","Commercial"],["land","Land"],["other","Other"]],{w:"md"}),
+      num("daysRented","Days rented at fair rental price"),
+      num("daysPersonal","Days of personal use"),
+      money("rents","Rents received",{if:E=>E.rent_books==="enter"}),
+      ...RENT_EXPENSES.map(([k,l]) => money("exp_"+k,l,{if:E=>E.rent_books==="enter"}))
+    ],{min:1})
+  ]},
+
+{ id:"credits", title:"Adjustments & Credits", intro:"Select everything that applied in {Y}. Leave it blank if none apply.",
+  fields:[
+    checks("ac","Which of these did you pay or do in {Y}?",() => [
+      ["edu","Paid college or other higher-education expenses (tuition, fees)"],
+      ["care","Paid child or dependent care so you (and your spouse) could work"],
+      ["hsa","Contributed to a Health Savings Account (HSA)"],
+      ["ira","Contributed to an IRA"],
+      ["sli","Paid student loan interest"],
+      ["adopt","Paid adoption expenses"],
+      ["alimony","Paid alimony"],
+      ["educator","Paid for classroom supplies as a K-12 teacher or educator"],
+      ["household","Paid a household employee (nanny, housekeeper, caregiver)"],
+      ["energy","Made energy-efficient home improvements (solar, heat pump, windows, doors, etc.)"],
+      ["ev","Bought a new or used plug-in electric or fuel-cell vehicle"],
+      ["move","Moved because of a military permanent change of station"]
+    ].filter(([k]) => !((k === "energy" || k === "ev") && Y() >= 2026))),
+    text("ac_eduWho","Who was the student?",{w:"md",if:E=>has("ac","edu")}),
+    radio("ac_iraType","Type of IRA",[["traditional","Traditional"],["roth","Roth"],["unsure","Not sure"]],{inline:true,if:E=>has("ac","ira")}),
+    money("ac_iraAmt","IRA contribution amount",{if:E=>has("ac","ira")}),
+    money("ac_adoptAmt","Adoption expenses",{if:E=>has("ac","adopt")}),
+    money("ac_alimonyAmt","Alimony paid",{if:E=>has("ac","alimony")}),
+    date("ac_divorceDate","Date of divorce or separation agreement",{if:E=>has("ac","alimony")}),
+    note("We'll get the alimony recipient's information from you at your appointment.",{if:E=>has("ac","alimony")}),
+    money("ac_educatorAmt","Classroom expenses",{if:E=>has("ac","educator")}),
+    money("ac_householdAmt","Total wages paid to household employees",{if:E=>has("ac","household")}),
+    text("ac_energyDesc","What improvements did you make?",{w:"md",if:E=>has("ac","energy")}),
+    money("ac_energyAmt","Total cost",{if:E=>has("ac","energy")}),
+    date("ac_evDate","Date acquired",{if:E=>has("ac","ev")}),
+    text("ac_evDesc","Vehicle year, make, and model",{w:"md",if:E=>has("ac","ev")}),
+    money("ac_moveAmt","Military moving expenses",{if:E=>has("ac","move")})
+  ]},
+
+{ id:"deductions", title:"Deductions", intro:"We'll compare itemizing with the standard deduction and use whichever saves you more.",
+  fields:[
+    yesno("ded_any","In {Y}, did you pay mortgage interest, property taxes, large medical bills, or make donations to charity?",{req:true}),
+    head("Medical and dental",{if:E=>E.ded_any==="yes"}),
+    money("ded_medical","Medical and dental expenses (not reimbursed by insurance)",{w:"md",if:E=>E.ded_any==="yes"}),
+    head("Taxes paid",{if:E=>E.ded_any==="yes"}),
+    money("ded_stateTax","State and local income taxes",{w:"md",help:"Not counting what was withheld from your paychecks.",if:E=>E.ded_any==="yes"}),
+    money("ded_salesTax","Sales taxes (large purchases)",{w:"md",if:E=>E.ded_any==="yes"}),
+    money("ded_reTax","Real estate taxes",{w:"md",if:E=>E.ded_any==="yes"}),
+    money("ded_ppTax","Personal property taxes (car tag, etc.)",{w:"md",if:E=>E.ded_any==="yes"}),
+    head("Interest paid",{if:E=>E.ded_any==="yes"}),
+    money("ded_mortgage","Home mortgage interest",{w:"md",if:E=>E.ded_any==="yes"}),
+    money("ded_carLoan","Interest on a loan for a new personal vehicle bought after 2024",{w:"md",if:E=>E.ded_any==="yes" && Y()>=2025}),
+    head("Charitable contributions",{if:E=>E.ded_any==="yes"}),
+    money("ded_charCash","Donations to charity (cash, check, card)",{w:"md",if:E=>E.ded_any==="yes"}),
+    money("ded_charNon","Donations to charity (clothing, goods, other non-cash)",{w:"md",if:E=>E.ded_any==="yes"}),
+    head("Casualty and theft",{if:E=>E.ded_any==="yes" && has("fe","disaster")}),
+    money("ded_casualty","Casualty and theft losses",{w:"md",if:E=>E.ded_any==="yes" && has("fe","disaster")}),
+    head("Gambling",{if:E=>has("inc","gamb")}),
+    money("ded_gambling","Gambling losses",{w:"md",if:E=>has("inc","gamb")}),
+    head("Other deductions",{if:E=>E.ded_any==="yes"}),
+    repeat("ded_other","Other miscellaneous deductions","Other deduction",MONEY_ROW,{if:E=>E.ded_any==="yes"}),
+    money("ded_charCashOnly","Did you give any cash donations to charity in {Y}? Enter the total.",{w:"lg",if:E=>E.ded_any==="no" && Y()>=2026,help:"Starting in 2026, cash gifts to charity can lower your taxes even if you don't itemize."}),
+    money("ded_carLoanOnly","Interest on a loan for a new personal vehicle bought after 2024 (if any)",{w:"lg",if:E=>E.ded_any==="no" && Y()>=2025})
+  ]},
+
+{ id:"estimates", title:"Estimated Payments", intro:"Tell us about any tax you paid ahead of time.",
+  fields:[
+    yesno("est","Did you make estimated tax payments for {Y}, or apply last year's refund to {Y}?",{req:true}),
+    select("est_state","State you made payments to (if any)",stateOpts,{w:"sm",if:E=>E.est==="yes"}),
+    ...EST_ROWS.flatMap(([k,l]) => [
+      sub(l,{if:E=>E.est==="yes"}),
+      date("est_"+k+"_fd","Federal: date",{if:E=>E.est==="yes",pair:true}),
+      money("est_"+k+"_fa","Federal: amount",{if:E=>E.est==="yes",pair:true}),
+      date("est_"+k+"_sd","State: date",{if:E=>E.est==="yes",pair:true}),
+      money("est_"+k+"_sa","State: amount",{if:E=>E.est==="yes",pair:true})
+    ])
+  ]},
+
+{ id:"refund", title:"Refund & Payment", intro:"How you'd like to get a refund, or pay if you owe.",
+  fields:[
+    radio("refundPref","If you get a refund, how would you like it?",[["dd","Direct deposit"],["check","Paper check"],["apply","Apply it to {Y1} estimated taxes"]],{req:true}),
+    radio("duePref","If you owe, how would you like to pay?",[["draft","Bank draft (automatic withdrawal)"],["card","Credit or debit card"],["mail","Mail a check"],["plan","Payment plan"]],{req:true}),
+    radio("acctType","Type of account",[["checking","Checking"],["savings","Savings"]],{inline:true,if:E=>E.refundPref==="dd"||E.duePref==="draft"}),
+    radio("acctUse","Personal or business account",[["personal","Personal"],["business","Business"]],{inline:true,if:E=>E.refundPref==="dd"||E.duePref==="draft"}),
+    note("To protect you, we don't collect bank account numbers online. Please bring a voided check or a letter from your bank. It's on your document list.",{if:E=>E.refundPref==="dd"||E.duePref==="draft"}),
+    area("notes","Anything else you'd like us to know?",{help:"Please don't include Social Security numbers or account numbers."})
+  ]},
+
+{ id:"review", title:"Review & Send", intro:"Here's your completed organizer and the documents to bring. Print it, email it to us, or both.", review:true, fields:[] }
+];
+
+/* ------------------------------------------------------------------ *
+ * Helpers
+ * ------------------------------------------------------------------ */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const empty = v => v == null || v === "" || (Array.isArray(v) && !v.length) || (typeof v === "object" && !Array.isArray(v) && !Object.keys(v).length);
+const optLabel = o => t(o[1]);
+const fmtMoney = v => { const n = parseFloat(String(v).replace(/[^0-9.\-]/g,"")); return isNaN(n) ? v : "$" + n.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2}); };
+const fmtDate = v => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v); return m ? `${m[2]}/${m[3]}/${m[1]}` : v; };
+const getOpts = fl => typeof fl.opts === "function" ? fl.opts() : fl.opts;
+
+/* README rule 1: block anything that looks like an SSN / ITIN. */
+const SSN_DASHED = /\b\d{3}[-\s.]\d{2}[-\s.]\d{4}\b/;
+const SSN_PLAIN  = /(^|[^\d])\d{9}([^\d]|$)/;
+function looksLikeSSN(v, fl){ v = String(v || ""); return SSN_DASHED.test(v) || (!fl.ein && SSN_PLAIN.test(v)); }
+
+/* Build E: only answers on currently-visible sections and fields. */
+function clean(){
+  const out = {}; E = out;
+  for (const sec of SECTIONS){
+    if (sec.review || (sec.if && !sec.if(out))) continue;
+    walk(sec.fields, S, out, null);
+  }
+  return out;
+}
+function walk(fields, src, out, row){
+  for (const fl of fields){
+    if (!fl.id) continue;
+    if (fl.if && !fl.if(E, row)) continue;
+    const v = src[fl.id];
+    if (fl.type === "repeat"){
+      out[fl.id] = (v || []).map(r => { const o = {}; walk(fl.fields, r, o, o); return o; });
+    } else if (!empty(v)) out[fl.id] = v;
+  }
+}
+const visibleSections = () => { clean(); return SECTIONS.filter(s => s.review || !s.if || s.if(E)); };
+
+/* ------------------------------------------------------------------ *
+ * Rendering
+ * ------------------------------------------------------------------ */
+let cur = "year";
+const visited = new Set(["year"]);
+let reg = {};   // data-vis key -> {fl, rep, i}
+
+function fieldHTML(fl, key, src, rep, i){
+  const w = fl.w || "md";
+  const vis = `data-vis="${esc(key)}"`;
+  reg[key] = {fl, rep, i};
+  if (fl.type === "heading") return `<h3 ${vis} class="field lg">${esc(t(fl.label))}</h3>`;
+  if (fl.type === "subhead") return `<h4 ${vis} class="field lg">${esc(t(fl.label))}</h4>`;
+  if (fl.type === "note")    return `<p ${vis} class="note field lg">${esc(t(fl.label))}</p>`;
+  const id = "i_" + key.replace(/[^\w]/g,"_");
+  const v = src[fl.id];
+  const lbl = `${esc(t(fl.label))}${fl.req ? ' <span class="req" aria-hidden="true">*</span>' : ""}`;
+  const help = fl.help ? `<div class="help">${esc(t(fl.help))}</div>` : "";
+  const msg = `<div class="msg" id="${id}_msg" role="alert"></div>`;
+  const cls = `field ${w}${fl.pair ? " pair" : ""}`;
+  const dk = `data-k="${esc(key)}"`;
+  const ac = fl.ac ? ` autocomplete="${fl.ac}"` : "";
+  switch (fl.type){
+    case "text": case "email": case "tel": case "date":
+      return `<div class="${cls}" ${vis}><label for="${id}">${lbl}</label>${help}<input id="${id}" type="${fl.type}" ${dk} value="${esc(v)}"${ac}${fl.ph ? ` placeholder="${esc(fl.ph)}"` : ""}>${msg}</div>`;
+    case "num":
+      return `<div class="${cls}" ${vis}><label for="${id}">${lbl}</label>${help}<input id="${id}" type="number" inputmode="numeric" ${dk} value="${esc(v)}"${fl.min != null ? ` min="${fl.min}"` : ""}${fl.max != null ? ` max="${fl.max}"` : ""}>${msg}</div>`;
+    case "money":
+      return `<div class="${cls}" ${vis}><label for="${id}">${lbl}</label>${help}<div class="money"><span>$</span><input id="${id}" type="text" inputmode="decimal" ${dk} value="${esc(v)}"></div>${msg}</div>`;
+    case "textarea":
+      return `<div class="${cls}" ${vis}><label for="${id}">${lbl}</label>${help}<textarea id="${id}" ${dk}>${esc(v)}</textarea>${msg}</div>`;
+    case "select":
+      return `<div class="${cls}" ${vis}><label for="${id}">${lbl}</label>${help}<select id="${id}" ${dk}><option value="">Select…</option>${getOpts(fl).map(o => `<option value="${esc(o[0])}"${v === o[0] ? " selected" : ""}>${esc(optLabel(o))}</option>`).join("")}</select>${msg}</div>`;
+    case "radio": case "yesno": {
+      const opts = fl.type === "yesno" ? [["yes","Yes"],["no","No"]] : getOpts(fl);
+      const inline = fl.type === "yesno" || fl.inline ? " inline" : "";
+      return `<div class="${cls}" ${vis} role="radiogroup" aria-labelledby="${id}_l"><div class="lbl" id="${id}_l">${lbl}</div>${help}<div class="opts${inline}">${opts.map(o => `<label class="opt"><input type="radio" name="${id}" value="${esc(o[0])}" ${dk}${v === o[0] ? " checked" : ""}><span>${esc(optLabel(o))}</span></label>`).join("")}</div>${msg}</div>`;
+    }
+    case "checks": {
+      const arr = v || [];
+      return `<div class="${cls}" ${vis}><div class="lbl">${lbl}</div>${help}<div class="opts">${getOpts(fl).map(o => `<label class="opt"><input type="checkbox" value="${esc(o[0])}" data-multi="1" ${dk}${arr.includes(o[0]) ? " checked" : ""}><span>${esc(optLabel(o))}</span></label>`).join("")}</div>${msg}</div>`;
+    }
+    case "checkcount": {
+      const obj = v || {};
+      return `<div class="${cls}" ${vis}><div class="lbl">${lbl}</div>${help}<div class="cc">${getOpts(fl).map(o => {
+        const on = o[0] in obj;
+        return `<label class="opt"><span><input type="checkbox" value="${esc(o[0])}" data-cc="1" ${dk}${on ? " checked" : ""}><span>${esc(optLabel(o))}</span></span><input type="number" min="1" aria-label="Number of forms for ${esc(optLabel(o))}" placeholder="#" title="Number of forms" value="${esc(obj[o[0]] || "")}" data-ccn="${esc(o[0])}" ${dk}${on ? "" : " disabled"}></label>`;
+      }).join("")}</div><div class="help" style="margin-top:6px">The box on the right is how many forms you have of each type (optional).</div>${msg}</div>`;
+    }
+    case "repeat": {
+      if (!Array.isArray(S[fl.id])) S[fl.id] = fl.min ? [{}] : [];
+      const rows = S[fl.id];
+      let h = `<div ${vis} class="contents">`;
+      rows.forEach((r, j) => {
+        h += `<fieldset class="row"><legend>${esc(fl.item)} ${j + 1}${rows.length > (fl.min || 0) ? ` <button type="button" class="btn link" data-del="${fl.id}.${j}">Remove</button>` : ""}</legend>`;
+        h += fl.fields.map(sf => fieldHTML(sf, `${fl.id}.${j}.${sf.id || "h" + Math.random().toString(36).slice(2,7)}`, r, fl.id, j)).join("");
+        h += `</fieldset>`;
+      });
+      h += `<div class="addrow"><button type="button" class="btn ghost small" data-add="${fl.id}">+ Add ${rows.length ? "another " : ""}${esc(fl.item.toLowerCase())}</button></div></div>`;
+      return h;
+    }
+  }
+  return "";
+}
+
+function render(){
+  const secs = visibleSections();
+  if (!secs.find(s => s.id === cur)) cur = secs[0].id;
+  const idx = secs.findIndex(s => s.id === cur);
+  const sec = secs[idx];
+  reg = {};
+  const form = $("#form");
+  let h = `<div class="field lg"><div class="stepno">Step ${idx + 1} of ${secs.length}</div><h2>${esc(t(sec.title))}</h2><p class="intro">${esc(t(sec.intro))}</p></div>`;
+  if (sec.review) h += reviewHTML();
+  else h += sec.fields.map(fl => fieldHTML(fl, fl.id || "h_" + Math.random().toString(36).slice(2,8), S)).join("");
+  form.innerHTML = h;
+  refresh();
+  // header + nav + buttons
+  $("#title").textContent = yr() ? `${yr()} Individual Tax Organizer` : "Online Tax Organizer";
+  $("#bar").style.width = Math.round(idx / (secs.length - 1) * 100) + "%";
+  $("#back").style.visibility = idx === 0 ? "hidden" : "visible";
+  $("#next").style.display = sec.review ? "none" : "";
+  $("#next").textContent = secs[idx + 1] && secs[idx + 1].review ? "Finish & review" : "Next";
+  renderNav(secs, idx);
+}
+function renderNav(secs, idx){
+  $("#steps").innerHTML = secs.map((s, j) =>
+    `<button type="button" data-go="${s.id}" class="${j === idx ? "cur" : visited.has(s.id) && j < idx ? "done" : ""}"${visited.has(s.id) ? "" : " disabled"}${j === idx ? ' aria-current="step"' : ""}><span class="n">${j + 1}</span>${esc(t(s.title))}</button>`).join("");
+}
+
+/* Show/hide follow-up questions as answers change. */
+function refresh(){
+  clean();
+  document.querySelectorAll("[data-vis]").forEach(el => {
+    const r = reg[el.dataset.vis]; if (!r || !r.fl.if) return;
+    const row = r.rep ? ((E[r.rep] || [])[r.i] || {}) : null;
+    el.hidden = !r.fl.if(E, row);
+  });
+  document.querySelectorAll("input[data-ccn]").forEach(n => {
+    const cb = n.parentElement.querySelector("input[data-cc]");
+    n.disabled = !cb.checked;
+  });
+  const secs = visibleSections();
+  renderNav(secs, secs.findIndex(s => s.id === cur));
+}
+
+/* ------------------------------------------------------------------ *
+ * Input handling
+ * ------------------------------------------------------------------ */
+function setVal(key, val){
+  const p = key.split(".");
+  if (p.length === 1) S[p[0]] = val;
+  else S[p[0]][+p[1]][p[2]] = val;
+}
+function getVal(key){
+  const p = key.split(".");
+  return p.length === 1 ? S[p[0]] : (S[p[0]][+p[1]] || {})[p[2]];
+}
+function onInput(e){
+  const el = e.target, k = el.dataset.k; if (!k) return;
+  let v;
+  if (el.dataset.multi){
+    v = (getVal(k) || []).filter(x => x !== el.value);
+    if (el.checked) v.push(el.value);
+  } else if (el.dataset.cc){
+    v = {...(getVal(k) || {})};
+    if (el.checked){ v[el.value] = v[el.value] || ""; setTimeout(() => el.closest(".opt").querySelector("[data-ccn]").focus(), 0); }
+    else delete v[el.value];
+  } else if (el.dataset.ccn){
+    v = {...(getVal(k) || {})}; v[el.dataset.ccn] = el.value;
+  } else if (el.type === "radio"){
+    if (!el.checked) return; v = el.value;
+  } else v = el.value;
+  setVal(k, v);
+  const wrap = el.closest("[data-vis]");
+  if (wrap){
+    wrap.classList.remove("err");
+    const r = reg[wrap.dataset.vis];
+    const m = wrap.querySelector(".msg");
+    if (r && ["text","textarea","email","tel"].includes(r.fl.type) && looksLikeSSN(v, r.fl)){
+      wrap.classList.add("err");
+      if (m) m.textContent = "This looks like a Social Security number. Please remove it. We never collect SSNs online.";
+    } else if (m) m.textContent = "";
+  }
+  if (k === "taxYear"){ render(); return; }   // year changes wording everywhere
+  refresh();
+}
+
+/* Validate the visible fields on the current step. */
+function validate(){
+  let first = null, ok = true;
+  document.querySelectorAll("[data-vis]").forEach(el => {
+    if (el.hidden || el.closest("[hidden]")) return;
+    const r = reg[el.dataset.vis]; if (!r) return;
+    const fl = r.fl, v = getVal(el.dataset.vis);
+    const m = el.querySelector(".msg");
+    let err = "";
+    if (fl.req && empty(v)) err = "Please answer this question.";
+    else if (fl.type === "email" && v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) err = "Please enter a valid email address.";
+    else if (["text","textarea","email","tel"].includes(fl.type) && looksLikeSSN(v, fl)) err = "This looks like a Social Security number. Please remove it. We never collect SSNs online.";
+    if (err){ ok = false; el.classList.add("err"); if (m) m.textContent = err; first = first || el; }
+  });
+  if (first){ first.scrollIntoView({behavior:"smooth", block:"center"}); const inp = first.querySelector("input,select,textarea"); if (inp) inp.focus({preventScroll:true}); }
+  return ok;
+}
+
+function go(delta){
+  const secs = visibleSections();
+  const idx = secs.findIndex(s => s.id === cur);
+  if (delta > 0 && !validate()) return;
+  const nx = secs[Math.max(0, Math.min(secs.length - 1, idx + delta))];
+  cur = nx.id; visited.add(cur);
+  render();
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+/* ------------------------------------------------------------------ *
+ * Document checklist: what the client should bring.
+ * ------------------------------------------------------------------ */
+function checklist(){
+  clean();
+  const L = [], add = (d, why) => { if (!L.some(x => x.d === d)) L.push({d, why}); };
+  const y = yr();
+  const plural = n => n && +n > 1 ? ` (${n} forms)` : n ? " (1 form)" : "";
+
+  add("Photo ID (driver's license or state ID) for you", "Many states require it to verify your identity when we e-file.");
+  if (hasSpouse() && E.marital !== "widowed") add("Photo ID (driver's license or state ID) for your spouse", "");
+  if (!has("le","first")) add(`A copy of your ${y - 1} tax return`, "Only if Hub City Tax Pros did not prepare it.");
+
+  // Dependents
+  (E.deps || []).forEach(d => {
+    if ((d.flags || []).includes("care")) add("Child or dependent care provider statement(s)", "Provider's name, address, tax ID number, and the amount you paid.");
+    if ((d.flags || []).includes("income")) add("Income forms (W-2, 1099) for any dependent who had income", "");
+  });
+
+  // Life events
+  if (has("le","name")) add("New Social Security card showing the name change", "Bring it to your appointment. Don't type the number into this form.");
+  if (has("le","letter")) add("Copies of any IRS or state letters or notices", "Any we haven't already seen.");
+  if (has("le","ippin")) add(`IRS Identity Protection PIN letter(s) (CP01A) for the ${y + 1} filing season`, "One for each person who has an IP PIN.");
+  if (has("le","baby")) add("Social Security card for your new child (and adoption papers, if adopted)", "Bring it to your appointment. Don't type the number into this form.");
+  if (has("le","death")) add("Court or executor documents, if you are filing for someone who passed away", "");
+
+  // Financial events
+  if (has("fe","home")){
+    add("Closing (settlement) statement for each home or rental property you bought, sold, or refinanced", "");
+    if (has("fe_home","sold")) add("Form 1099-S (proceeds from the real estate sale)", "");
+  }
+  if (has("fe","disaster")) add("Records of the disaster loss: repair estimates, photos, insurance claims and payments", "");
+  if (has("fe","rollover")) add("Form 1099-R and Form 5498 for the rollover or conversion", "");
+  if (has("fe","digital")) add(`Digital asset statements and gain/loss reports from each exchange or wallet${y >= 2025 ? ", including any Form 1099-DA" : ""}`, "");
+  if (has("fe","foreign")) add("Foreign account details: bank name and address, account type, and highest balance during the year", E.fe_foreign10k === "yes" ? "Needed for the FBAR (FinCEN 114) report." : "");
+  if (has("fe","gift")) add(`Details of gifts over ${t("{GIFT}")}: who received them, the date, and the value`, "");
+  if (has("fe","market")) add("Form 1095-A (Health Insurance Marketplace Statement)", "");
+  if (E.fe_coverage) add("Form 1095-B or 1095-C showing your health coverage", "Your state asks about health coverage.");
+
+  // Income
+  const INC_DOCS = {
+    w2:"Form W-2 from each employer", r:"Form 1099-R", ssa:"Form SSA-1099", se:"Form 1099-NEC and/or 1099-K for your business",
+    refund:"Form 1099-G (state or local tax refund)", unemp:"Form 1099-G (unemployment compensation)",
+    int:"Form 1099-INT or year-end bank statements", div:"Form 1099-DIV", b:"Form 1099-B (brokerage statements showing sales)",
+    c:"Form 1099-C (canceled debt)", rent:"Form 1099-MISC for rental income (if you received one)", roy:"Form 1099-MISC (royalties)",
+    q:"Form 1099-Q (education savings / 529 distributions)", sa:"Form 1099-SA (HSA / MSA distributions)",
+    k1p:"Schedule K-1 from each partnership", k1s:"Schedule K-1 from each S corporation", k1e:"Schedule K-1 from each estate or trust",
+    gamb:"Form W-2G (gambling winnings)", farm:"Farm income and expense records", other:"Documents for any other income (statements, 1099-MISC, etc.)"
+  };
+  for (const [k] of INCOME) if (has("inc", k)) add(INC_DOCS[k] + plural(E.inc[k]), "");
+  if (has("inc","q")) add("Form 1098-T for the student who used the 529 / education savings money", "");
+
+  // Business
+  if (has("inc","se")){
+    if (E.bz_books === "bring") add("Profit & loss statement or bookkeeping report for your business", "");
+    if (E.bz_filed1099 === "yes") add("Copies of the Forms 1099 you issued to contractors", "");
+    if (has("bz_events","seHealth")) add("Statements for self-employed health insurance premiums", "");
+    if (has("bz_events","retire")) add("Self-employed retirement plan contribution statements", "");
+    if (E.bz_assets === "yes") add("Purchase and sale receipts for business assets over $2,500", "");
+    if (E.bz_vehicle === "yes") add("Business mileage log for your vehicle", "");
+    if (has("bz_events","started")) add("Business start-up or purchase documents", "");
+  }
+
+  // Rentals
+  if (has("inc","rent")){
+    add(E.rent_books === "bring" ? "Income and expense summary for each rental property" : "Receipts or statements supporting your rental property expenses", "");
+    add("Form 1098 (mortgage interest) for each rental property with a mortgage", "");
+  }
+
+  // Adjustments & credits
+  if (has("ac","edu")) add("Form 1098-T (tuition statement) and receipts for required books and supplies", "");
+  if (has("ac","care")) add("Child or dependent care provider statement(s)", "Provider's name, address, tax ID number, and the amount you paid.");
+  if (has("ac","hsa")) add("Form 5498-SA (HSA contributions)", "");
+  if (has("ac","ira")) add("Form 5498 or a year-end IRA contribution statement", "");
+  if (has("ac","sli")) add("Form 1098-E (student loan interest)", "");
+  if (has("ac","adopt")) add("Adoption expense records and adoption decree", "");
+  if (has("ac","alimony")) add("Divorce decree or separation agreement", "");
+  if (has("ac","educator")) add("Receipts for classroom supplies", "");
+  if (has("ac","household")) add("Copies of Forms W-2 / W-3 issued to household employees, and payroll records", "");
+  if (has("ac","energy")) add("Receipts and manufacturer certifications for energy-efficient improvements", "");
+  if (has("ac","ev")) add("Seller's time-of-sale report and purchase agreement for the electric vehicle", "");
+  if (has("ac","move")) add("Military PCS orders and moving expense receipts", "");
+
+  // Deductions
+  if (E.ded_any === "yes"){
+    if (E.ded_mortgage) add("Form 1098 (mortgage interest statement) for your home", "");
+    if (E.ded_reTax) add("Real estate (property) tax bills or receipts", "");
+    if (E.ded_ppTax) add("Personal property tax receipts (car tag, etc.)", "");
+    if (E.ded_medical) add("Summary of medical and dental expenses", "");
+    if (E.ded_charCash || E.ded_charNon) add("Charitable donation receipts and acknowledgment letters", "For non-cash gifts over $500, include a list of the items and their value.");
+  }
+  if (E.ded_carLoan || E.ded_carLoanOnly) add("Lender statement showing interest paid on your new vehicle loan, and the vehicle's VIN", "");
+  if (E.ded_charCashOnly) add("Charitable donation receipts", "");
+  if (E.ded_gambling) add("Records of gambling losses (casino win/loss statements, tickets)", "");
+
+  // Estimates and banking
+  if (E.est === "yes") add("Records of your estimated tax payments (dates and amounts)", "If you didn't enter them in the organizer.");
+  if (E.refundPref === "dd" || E.duePref === "draft") add("A voided check or bank letter showing your routing and account numbers", "For direct deposit or bank draft.");
+  return L;
+}
+
+/* ------------------------------------------------------------------ *
+ * Organizer summary (screen, print, and email text)
+ * ------------------------------------------------------------------ */
+function fmt(fl, v){
+  switch (fl.type){
+    case "money": return fmtMoney(v);
+    case "date": return fmtDate(v);
+    case "yesno": return v === "yes" ? "Yes" : "No";
+    case "radio": case "select": { const o = getOpts(fl).find(o => o[0] === v); return o ? optLabel(o) : v; }
+    case "checks": return v.map(x => { const o = getOpts(fl).find(o => o[0] === x); return o ? optLabel(o) : x; }).join("\n");
+    case "checkcount": return Object.keys(v).map(x => { const o = getOpts(fl).find(o => o[0] === x); return (o ? optLabel(o) : x) + (v[x] ? `: ${v[x]} form${+v[x] > 1 ? "s" : ""}` : ""); }).join("\n");
+    default: return v;
+  }
+}
+function summarize(){
+  clean();
+  const out = [];
+  for (const sec of SECTIONS){
+    if (sec.review || (sec.if && !sec.if(E))) continue;
+    const items = [];
+    collect(sec.fields, E, items, null, "");
+    if (items.length) out.push({title: t(sec.title), items});
+  }
+  return out;
+}
+function collect(fields, src, items, row, prefix){
+  for (const fl of fields){
+    if (!fl.id || (fl.if && !fl.if(E, row))) continue;
+    const v = src[fl.id];
+    if (empty(v)) continue;
+    if (fl.type === "repeat"){
+      v.forEach((r, j) => {
+        const sub = [];
+        collect(fl.fields, r, sub, r, "");
+        if (sub.length){ items.push({head: `${fl.item} ${j + 1}`}); items.push(...sub); }
+      });
+    } else items.push({label: prefix + t(fl.label), value: String(fmt(fl, v))});
+  }
+}
+function reviewHTML(){
+  const sum = summarize(), docs = checklist();
+  const name = [E.tp_first, E.tp_last].filter(Boolean).join(" ");
+  return `<div class="review">
+    <div class="tools no-print">
+      <button type="button" class="btn" data-act="email">Email to Hub City Tax Pros</button>
+      <button type="button" class="btn ghost" data-act="print">Print organizer + checklist</button>
+      <button type="button" class="btn ghost" data-act="printList">Print checklist only</button>
+      <button type="button" class="btn ghost" data-act="copy">Copy as text</button>
+    </div>
+    <p class="note no-print" style="margin-bottom:18px">"Email" opens your own email app with everything filled in, addressed only to
+      <strong>${esc(OFFICE_EMAIL)}</strong> with a copy to <strong>${esc(E.tp_email || "your email")}</strong>. Review it and press Send.
+      If the email looks cut off, use "Copy as text" and paste it into the email instead.</p>
+    <p class="no-print help" id="copyMsg" role="status"></p>
+    <section class="panel checklist">
+      <div class="print-only"><strong>${esc(name)}</strong>, ${yr()} tax year</div>
+      <h3>Documents to bring (${docs.length})</h3>
+      <ol class="check">${docs.map(x => `<li><span class="box" aria-hidden="true"></span><div>${esc(x.d)}${x.why ? `<small>${esc(x.why)}</small>` : ""}</div></li>`).join("")}</ol>
+    </section>
+    <section class="panel organizer">
+      <h3>Your ${yr()} organizer</h3>
+      ${sum.map(s => `<div class="sum-sec"><h4>${esc(s.title)}</h4><dl>${s.items.map(it => it.head ? `<div class="sub-h">${esc(it.head)}</div>` : `<dt>${esc(it.label)}</dt><dd>${esc(it.value)}</dd>`).join("")}</dl></div>`).join("")}
+    </section>
+  </div>`;
+}
+function plainText(){
+  const sum = summarize(), docs = checklist();
+  const lines = [`${yr()} INDIVIDUAL TAX ORGANIZER`, `${[E.tp_first, E.tp_last].filter(Boolean).join(" ")}`, ""];
+  lines.push("DOCUMENTS I WILL BRING", ...docs.map((d, i) => `${i + 1}. ${d.d}`), "");
+  for (const s of sum){
+    lines.push(s.title.toUpperCase());
+    for (const it of s.items) lines.push(it.head ? `  ${it.head}` : `- ${it.label}: ${it.value.replace(/\n/g, "; ")}`);
+    lines.push("");
+  }
+  // Final safety net for README rule 1.
+  return lines.join("\n").replace(new RegExp(SSN_DASHED.source, "g"), "[removed]");
+}
+
+/* README rule 4: only the office address and the client's own email field. */
+function sendEmail(){
+  const to = OFFICE_EMAIL, cc = (E.tp_email || "").trim();
+  const subject = `${yr()} Tax Organizer: ${[E.tp_first, E.tp_last].filter(Boolean).join(" ")}`;
+  const url = `mailto:${to}?${cc ? "cc=" + encodeURIComponent(cc) + "&" : ""}subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(plainText())}`;
+  const a = document.createElement("a"); a.href = url; a.target = "_top"; a.rel = "noopener";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+async function copyText(){
+  const txt = plainText();
+  try { await navigator.clipboard.writeText(txt); }
+  catch { const ta = document.createElement("textarea"); ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+  $("#copyMsg").textContent = `Copied. Paste it into an email to ${OFFICE_EMAIL}.`;
+}
+
+/* ------------------------------------------------------------------ *
+ * Wire up
+ * ------------------------------------------------------------------ */
+$("#form").addEventListener("input", onInput);
+$("#form").addEventListener("change", e => { if (e.target.type === "radio" || e.target.type === "checkbox" || e.target.tagName === "SELECT") onInput(e); });
+$("#form").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.add){ (S[b.dataset.add] = S[b.dataset.add] || []).push({}); render(); }
+  else if (b.dataset.del){ const [id, j] = b.dataset.del.split("."); S[id].splice(+j, 1); render(); }
+  else if (b.dataset.act === "email") sendEmail();
+  else if (b.dataset.act === "copy") copyText();
+  else if (b.dataset.act === "print"){ document.body.classList.remove("only-checklist"); window.print(); }
+  else if (b.dataset.act === "printList"){ document.body.classList.add("only-checklist"); window.print(); }
+});
+window.addEventListener("afterprint", () => document.body.classList.remove("only-checklist"));
+$("#form").addEventListener("submit", e => e.preventDefault());
+$("#next").addEventListener("click", () => go(1));
+$("#back").addEventListener("click", () => go(-1));
+$("#steps").addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b && !b.disabled){ cur = b.dataset.go; render(); } });
+window.addEventListener("beforeunload", e => { if (Object.keys(S).length > 1){ e.preventDefault(); e.returnValue = ""; } });
+render();
+</script>
+</body>
+</html>
